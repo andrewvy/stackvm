@@ -1,5 +1,5 @@
 defmodule StackFrame do
-  defstruct stack: []
+  defstruct stack: [], operands: [], return_address: 0
 end
 
 defmodule CPU do
@@ -19,6 +19,11 @@ defmodule VM do
     %CPU{ cpu | ip: cpu.ip + inc_ip}
   end
 
+  def pop(stackframe) do
+    [a | _stack] = stackframe.stack
+    a
+  end
+
   def execute(%CPU{} = cpu) do
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)
@@ -29,7 +34,7 @@ defmodule VM do
   defp _execute(:halt, _cpu), do: :halted
 
   defp _execute(:print, cpu) do
-    stackframe = Enum.at(cpu.callstack, cpu.csp)
+    stackframe = Enum.at(cpu.callstack, 0)
     [ int | _rest_of_stack ] = stackframe.stack
     IO.inspect(int)
 
@@ -40,13 +45,13 @@ defmodule VM do
 
   defp _execute(:iconst, cpu) do
     int = get_ins(cpu)
-    stackframe = Enum.at(cpu.callstack, cpu.csp)
+    stackframe = Enum.at(cpu.callstack, 0)
     cpu = %CPU{ cpu |
       ip: cpu.ip + 1,
       callstack: List.replace_at(
           cpu.callstack,
-          cpu.csp,
-          %StackFrame{ stackframe | stack: stackframe.stack ++ [int] }
+          0,
+          %StackFrame{ stackframe | stack: [int | stackframe.stack] }
       )
     }
 
@@ -56,12 +61,12 @@ defmodule VM do
   end
 
   defp _execute(:pop, cpu) do
-    stackframe = Enum.at(cpu.callstack, cpu.csp)
+    stackframe = Enum.at(cpu.callstack, 0)
     [ _int | rest_of_stack ] = stackframe.stack
     cpu = %CPU{ cpu |
       callstack: List.replace_at(
         cpu.callstack,
-        cpu.csp,
+        0,
         %StackFrame{ stackframe | stack: rest_of_stack }
       )
     }
@@ -72,9 +77,9 @@ defmodule VM do
   end
 
   defp _execute(:iadd, cpu) do
-    stackframe = Enum.at(cpu.callstack, cpu.csp)
+    stackframe = Enum.at(cpu.callstack, 0)
     [a | [b | rest_of_stack]] = stackframe.stack
-    cpu = %CPU{ cpu | callstack: List.replace_at(cpu.callstack, cpu.csp, %StackFrame{ stackframe | stack: [a + b | rest_of_stack] })}
+    cpu = %CPU{ cpu | callstack: List.replace_at(cpu.callstack, 0, %StackFrame{ stackframe | stack: [a + b | rest_of_stack] })}
 
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)
@@ -85,6 +90,44 @@ defmodule VM do
     jump_ins = get_ins(cpu)
     cpu = %CPU{ cpu |
       ip: jump_ins,
+    }
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
+
+  defp _execute(:call, cpu) do
+    call_address = get_ins(cpu)
+    argcount = get_ins(inc_ip(cpu, 1))
+    current_stackframe = Enum.at(cpu.callstack, 0)
+
+    { current_stack, stack } =
+      Enum.reduce(1..argcount, {current_stackframe.stack, []}, fn (_, {stack, acc}) ->
+        [a | new_stack] = stack
+        { new_stack, [a | acc] }
+      end)
+
+    new_stackframe = %StackFrame{ return_address: cpu.ip + 2, stack: stack }
+    cpu = %CPU{ cpu | csp: 0, ip: call_address, callstack: [new_stackframe | cpu.callstack] }
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
+
+  defp _execute(:return, cpu) do
+    [last_stackframe | [current_stackframe | stackframes]] = cpu.callstack
+    [return_value | _] = last_stackframe.stack
+
+    current_stackframe = %StackFrame{ current_stackframe |
+      stack: [return_value | current_stackframe.stack]
+    }
+
+    cpu = %CPU{ cpu |
+      ip: last_stackframe.return_address,
+      csp: 0,
+      callstack: [current_stackframe | stackframes]
     }
 
     _execute(
