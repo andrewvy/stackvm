@@ -80,4 +80,15 @@ defmodule VM do
       get_ins(cpu), inc_ip(cpu, 1)
     )
   end
+
+  defp _execute(:jump, cpu) do
+    jump_ins = get_ins(cpu)
+    cpu = %CPU{ cpu |
+      ip: jump_ins,
+    }
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
 end

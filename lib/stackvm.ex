@@ -3,8 +3,14 @@ defmodule StackVM do
     instructions = {
         :iconst, 5,
         :iconst, 2,
-        :iadd,
+        :jump, 8,
         :print,
+        :halt,
+        # func(a, b) -> a + b + 5
+        :iadd,
+        :iconst, 5,
+        :iadd,
+        :jump, 6,
         :halt
     }
 
