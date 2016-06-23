@@ -31,7 +31,7 @@ defmodule VM do
   end
 
   defp _execute(nil, cpu), do: cpu
-  defp _execute(:halt, _cpu), do: :halted
+  defp _execute(:halt, cpu), do: { :halted, cpu }
 
   defp _execute(:print, cpu) do
     stackframe = Enum.at(cpu.callstack, 0)
@@ -100,7 +100,7 @@ defmodule VM do
   defp _execute(:call, cpu) do
     call_address = get_ins(cpu)
     argcount = get_ins(inc_ip(cpu, 1))
-    current_stackframe = Enum.at(cpu.callstack, 0)
+    [current_stackframe | stackframes] = cpu.callstack
 
     { current_stack, stack } =
       Enum.reduce(1..argcount, {current_stackframe.stack, []}, fn (_, {stack, acc}) ->
@@ -108,8 +108,10 @@ defmodule VM do
         { new_stack, [a | acc] }
       end)
 
+    current_stackframe = %StackFrame{ current_stackframe | stack: current_stack }
+
     new_stackframe = %StackFrame{ return_address: cpu.ip + 2, stack: stack }
-    cpu = %CPU{ cpu | csp: 0, ip: call_address, callstack: [new_stackframe | cpu.callstack] }
+    cpu = %CPU{ cpu | csp: 0, ip: call_address, callstack: [new_stackframe | [current_stackframe | stackframes]] }
 
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)
