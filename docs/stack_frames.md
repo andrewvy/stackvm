@@ -48,3 +48,44 @@ are moved from the operand stack into the stack frame, based on the FunctionDesc
 0011  iadd      ; stack[30]     args[10 20] returnaddress=0005
 0012  ret
 ```
+
+---
+
+### Locals
+
+Locals are an allocated space in a call stack frame to store variables.
+
+```
+.def main: args=0, locals=0
+  iconst 10
+  iconst 20
+  call f()
+  halt
+.def f: args=2, locals=1
+  load 0
+  load 1
+  imul
+  store 2 ; store in locals [ 0 * 1 ]
+  load 2
+  iconst 150
+  ifgt
+  print
+  pop
+  ret
+```
+
+equivalent to
+
+```
+main() {
+  f(10, 20);
+}
+
+f(int a, int b) {
+  var c;
+  c = a * b;
+  if (c < 150) {
+    print(c);
+  }
+}
+```
