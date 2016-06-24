@@ -35,8 +35,12 @@ defmodule VM do
 
   defp _execute(:print, cpu) do
     stackframe = Enum.at(cpu.callstack, 0)
-    [ int | _rest_of_stack ] = stackframe.stack
-    IO.inspect(int)
+    char = case stackframe.stack do
+      [] -> 10
+      [ int | _rest_of_stack ] -> int
+    end
+
+    IO.write :stdio, [char]
 
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)
@@ -62,7 +66,12 @@ defmodule VM do
 
   defp _execute(:pop, cpu) do
     stackframe = Enum.at(cpu.callstack, 0)
-    [ _int | rest_of_stack ] = stackframe.stack
+
+    rest_of_stack = case stackframe.stack do
+      [] -> []
+      [ _int | rest_of_stack ] -> rest_of_stack
+    end
+
     cpu = %CPU{ cpu |
       callstack: List.replace_at(
         cpu.callstack,
