@@ -97,6 +97,42 @@ defmodule VM do
     )
   end
 
+  defp _execute(:is_eq, cpu) do
+    stackframe = Enum.at(cpu.callstack, 0)
+    [a | [b | rest_of_stack]] = stackframe.stack
+
+    is_equal = case a == b do
+      true -> 1
+      false -> 0
+    end
+
+    cpu = %CPU{ cpu | callstack: List.replace_at(cpu.callstack, 0, %StackFrame{ stackframe | stack: [ is_equal | rest_of_stack ] })}
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
+
+  defp _execute(:branch_if_true, cpu) do
+    jump_ins = get_ins(cpu)
+    stackframe = Enum.at(cpu.callstack, 0)
+    [a | _rest_of_stack] = stackframe.stack
+
+    if a == 1 do
+      cpu = %CPU{ cpu |
+        ip: jump_ins,
+      }
+    else
+      cpu = %CPU{ cpu |
+        ip: cpu.ip + 1,
+      }
+    end
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
+
   defp _execute(:call, cpu) do
     call_address = get_ins(cpu)
     argcount = get_ins(inc_ip(cpu, 1))
@@ -104,8 +140,12 @@ defmodule VM do
 
     { current_stack, stack } =
       Enum.reduce(1..argcount, {current_stackframe.stack, []}, fn (_, {stack, acc}) ->
-        [a | new_stack] = stack
-        { new_stack, [a | acc] }
+        { new_stack, new_acc } = case stack do
+          [] -> { stack, acc }
+          [a | new_stack] -> { new_stack, [ a | acc ] }
+        end
+
+        { new_stack, new_acc }
       end)
 
     current_stackframe = %StackFrame{ current_stackframe | stack: current_stack }

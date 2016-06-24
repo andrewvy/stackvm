@@ -1,17 +1,20 @@
 defmodule StackVM do
   def execute() do
     instructions = {
-        :iconst, 5,
         :iconst, 2,
-        :call, 9, 2,
+        :iconst, 2,
+        :iadd,
+        :iconst, 4,
+        :is_eq,
+        :branch_if_true, 11,
+        :halt,
+        :call, 16, 0,
         :print,
         :halt,
-        # func(a, b) -> a + b + 5
+        :iconst, 10,
+        :iconst, 10,
         :iadd,
-        :iconst, 5,
-        :iadd,
-        :return,
-        :halt
+        :return
     }
 
     cpu = %CPU{
