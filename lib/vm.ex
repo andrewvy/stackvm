@@ -9,7 +9,10 @@ defmodule VM do
 
   def inc_ip(cpu, inc_ip), do: %CPU{ cpu | ip: cpu.ip + inc_ip}
 
-  def pop(stackframe), do: [a | _stack] = stackframe.stack; a
+  def pop(stackframe) do
+    [a | _stack] = stackframe.stack
+    a
+  end
 
   def lookup(cpu, :string, reference), do: Map.get(cpu.constant_pool.strings, reference)
 
@@ -17,6 +20,11 @@ defmodule VM do
 
   defp _execute(nil, cpu), do: cpu
   defp _execute(:halt, cpu), do: { :halted, cpu }
+
+  defp _execute(:debugprint, cpu) do
+    IO.inspect(cpu)
+    _execute(get_ins(cpu), inc_ip(cpu, 1))
+  end
 
   defp _execute(:print, cpu) do
     stackframe = Enum.at(cpu.callstack, 0)
@@ -37,6 +45,7 @@ defmodule VM do
       [ string_ref | _rest_of_stack ] ->
         string = lookup(cpu, :string, string_ref)
         IO.write :stdio, string.value
+        IO.write :stdio, '\n'
         _execute(get_ins(cpu), inc_ip(cpu, 1))
     end
   end
@@ -121,14 +130,14 @@ defmodule VM do
 
   defp _execute(:is_eq, cpu) do
     stackframe = Enum.at(cpu.callstack, 0)
-    [a | [b | rest_of_stack]] = stackframe.stack
+    [a | [b | _rest_of_stack]] = stackframe.stack
 
     is_equal = case a == b do
       true -> 1
       false -> 0
     end
 
-    cpu = %CPU{ cpu | callstack: List.replace_at(cpu.callstack, 0, %StackFrame{ stackframe | stack: [ is_equal | rest_of_stack ] })}
+    cpu = %CPU{ cpu | callstack: List.replace_at(cpu.callstack, 0, %StackFrame{ stackframe | stack: [ is_equal | stackframe.stack ] })}
 
     _execute(get_ins(cpu), inc_ip(cpu, 1))
   end

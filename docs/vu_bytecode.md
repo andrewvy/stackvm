@@ -20,3 +20,4 @@ Instruction Set
 | return         | 0      | 0                    | returns from a call, pushes last value from the stack |
 | loadstring     | 0      | 1: charlist          | loads given string into constant pool and puts reference onto the stack |
 | printstring    | 0      | 0                    | pop stack, check referenced string in constant pool and prints it to stdio |
+| debugprint     | 0      | 0                    | dumps the current CPU state |
