@@ -1,9 +1,17 @@
+defmodule StringDefinition do
+  defstruct value: nil
+end
+
+defmodule ConstantPool do
+  defstruct strings: %{}, strings_ref: 0
+end
+
 defmodule StackFrame do
   defstruct stack: [], operands: [], return_address: 0
 end
 
 defmodule CPU do
-  defstruct instruction_list: [], callstack: [], ip: 0, csp: 0
+  defstruct constant_pool: nil, instruction_list: [], callstack: [], ip: 0, csp: 0
 end
 
 defmodule VM do
@@ -24,6 +32,10 @@ defmodule VM do
     a
   end
 
+  def lookup(cpu, :string, reference) do
+    Map.get(cpu.constant_pool.strings, reference)
+  end
+
   def execute(%CPU{} = cpu) do
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)
@@ -41,6 +53,44 @@ defmodule VM do
     end
 
     IO.write :stdio, [char]
+
+    _execute(
+      get_ins(cpu), inc_ip(cpu, 1)
+    )
+  end
+
+  defp _execute(:printstring, cpu) do
+    stackframe = Enum.at(cpu.callstack, 0)
+    case stackframe.stack do
+      [] -> _execute(get_ins(cpu), inc_ip(cpu, 1))
+      [ string_ref | _rest_of_stack ] ->
+        string = lookup(cpu, :string, string_ref)
+        IO.write :stdio, string.value
+        _execute(get_ins(cpu), inc_ip(cpu, 1))
+    end
+  end
+
+  defp _execute(:loadstring, cpu) do
+    value = get_ins(cpu)
+    stackframe = Enum.at(cpu.callstack, 0)
+    string_ref = cpu.constant_pool.strings_ref + 1
+    string = %StringDefinition{ value: value }
+    strings = Map.put(cpu.constant_pool.strings, string_ref, string)
+
+    constant_pool = %ConstantPool{cpu.constant_pool |
+      strings: strings,
+      strings_ref: string_ref
+    }
+
+    cpu = %CPU{ cpu |
+      ip: cpu.ip + 1,
+      constant_pool: constant_pool,
+      callstack: List.replace_at(
+          cpu.callstack,
+          0,
+          %StackFrame{ stackframe | stack: [string_ref | stackframe.stack] }
+      )
+    }
 
     _execute(
       get_ins(cpu), inc_ip(cpu, 1)

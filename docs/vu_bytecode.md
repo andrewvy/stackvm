@@ -18,3 +18,5 @@ Instruction Set
 | branch_if_true | 0      | 1: address           | pop stack, check if is 1 -> goes to given address |
 | call           | 0      | 2: address, argcount | calls the given address, and pushes 'argcount' values from the stack onto the new callstack |
 | return         | 0      | 0                    | returns from a call, pushes last value from the stack |
+| loadstring     | 0      | 1: charlist          | loads given string into constant pool and puts reference onto the stack |
+| printstring    | 0      | 0                    | pop stack, check referenced string in constant pool and prints it to stdio |
